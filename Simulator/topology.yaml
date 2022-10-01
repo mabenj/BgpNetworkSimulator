@@ -1,0 +1,18 @@
+version: 1.0
+nodes: 
+  - id: 1
+    ip: localhost
+    port: 7001
+    neighbors: [2, 3, 4]
+  - id: 2
+    ip: localhost
+    port: 7002
+    neighbors: [1]
+  - id: 3
+    ip: localhost
+    port: 7003
+    neighbors: [1, 4]
+  - id: 4
+    ip: localhost
+    port: 7004
+    neighbors: [1, 3]

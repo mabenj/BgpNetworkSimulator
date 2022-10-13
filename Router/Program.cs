@@ -1,54 +1,42 @@
 ﻿namespace Router {
 	using System;
-	using System.Net;
-	using System.Net.Sockets;
-	using System.Text;
+	using System.Diagnostics;
+	using System.Linq;
 
 	using Common;
 
 	public class Program {
-		public static void Main(string[] args) {
-			var routerId = args[0];
-			var port = int.Parse(args[1]);
-			var isServer = args[2] == "1";
-
-			Run(routerId, port, isServer);
-			Console.ReadKey();
+		public static int Main(string[] args) {
+			try {
+				var routerConfig = ProcessArgs(args);
+				Run(routerConfig);
+				Console.ReadKey();
+			} catch(Exception e) {
+				Logger.Error($"Exception: {e.Message}", e);
+				return 1;
+			}
+			return 0;
 		}
 
-		private static async void Run(string routerId, int port, bool isServer) {
-			var router = new Router(routerId, port);
-
-			Logger.Info($"Starting router [id:{routerId}] [port:{port}] [is_server:{isServer}]");
-
-			if(isServer) {
-				router.Start();
-			} else {
-				// not a server
-
-				try {
-					var messageString = "FOOBAR :DD";
-
-					using var client = new TcpClient();
-					await client.ConnectAsync(IPAddress.Loopback, port);
-					await using NetworkStream stream = client.GetStream();
-
-					var messageBytes = Encoding.UTF8.GetBytes(messageString);
-					await stream.WriteAsync(messageBytes);
-					Logger.Info($"Sent message: '{messageString}'");
-
-					var buffer = new byte[1024];
-					int received = await stream.ReadAsync(buffer);
-					var responseString = Encoding.UTF8.GetString(buffer, 0, received);
-					Logger.Info($"Received response message: '{responseString}'");
-
-					// Close everything.
-					stream.Close();
-					client.Close();
-				} catch(Exception e) {
-					Logger.Error($"Exception {e}", e);
-				}
+		private static RouterConfiguration ProcessArgs(string[] args) {
+			args = args.Select(arg => arg.ToLowerInvariant()).ToArray();
+			if(args.Any(arg => arg == "--debug") && !Debugger.IsAttached) {
+				Debugger.Launch();
+				args = args.Where(arg => arg != "--debug").ToArray();
 			}
+			if(args.Length < 2) {
+				throw new ArgumentException("Invalid arguments. Please provide following the arguments: <router id> <port>.");
+			}
+			return new RouterConfiguration() {
+				Id = args[0],
+				Port = int.Parse(args[1]),
+			};
+		}
+
+		private static void Run(RouterConfiguration config) {
+			var router = new Router(config.Id, config.Port);
+			Logger.Info($"Starting router [id:{config.Id}] [port:{config.Port}]");
+			router.Start();
 		}
 	}
 }

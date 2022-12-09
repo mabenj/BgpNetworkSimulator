@@ -33,7 +33,7 @@
 
 		public static TopologyConfiguration CreateFromFile() {
 			var deserializer = new DeserializerBuilder()
-				.WithNamingConvention(CamelCaseNamingConvention.Instance)
+				.WithNamingConvention(UnderscoredNamingConvention.Instance)
 				.Build();
 			try {
 				return deserializer.Deserialize<TopologyConfiguration>(File.ReadAllText(DefaultConfigFilePath));
@@ -44,12 +44,17 @@
 	}
 
 	public class RouterNode {
+		public int As {
+			get;
+			set;
+		}
+
 		public string Id {
 			get;
 			set;
 		}
 
-		public string Ip {
+		public string MockIp {
 			get;
 			set;
 		}

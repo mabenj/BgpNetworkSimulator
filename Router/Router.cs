@@ -1,107 +1,57 @@
-﻿using System;
-using System.Diagnostics;
-using System.Net;
-using System.Reflection;
+﻿namespace Router {
+	using System.Net;
 
-namespace Router {
 	using Common;
 
 	public class Router {
-		private readonly TcpConnectionManager connectionManager;
-		private readonly string id; 
+		private readonly int asNumber;
+		private readonly IPAddress bgpIdentifier;
+		private readonly ConnectionManager connectionManager;
+		private readonly int holdTime;
 		private readonly int port;
-        private BgpState state;
 
-		public Router(string id, int port) {
-			this.id = id;
-            this.port = port;
-			this.connectionManager = new TcpConnectionManager(id);
-            this.state = BgpState.Idle;
-        }
+		public Router(string id, int port, int asNumber, int holdTime) {
+			this.port = port;
+			this.connectionManager = new ConnectionManager(id);
+			this.asNumber = asNumber;
+			this.holdTime = holdTime;
+			this.bgpIdentifier = IPAddress.Loopback; // TODO: resolve this somehow ?
+		}
 
 		public void Start() {
-			//this.connectionManager.ConnectionReceived += this.HandleConnectionReceived;
-            this.connectionManager.BgpOpenReceived += this.HandleBgpOpenReceived;
-            this.connectionManager.BgpUpdateReceived += this.HandleBgpUpdateReceived;
-            this.connectionManager.BgpNotificationReceived += this.HandleBgpNotificationReceived;
-            this.connectionManager.BgpKeepAliveReceived += this.HandleBgpKeepAliveReceived;
-            this.connectionManager.StartTcpListener(this.port);
-            this.connectionManager.DiscoverNeighbors();
+			this.connectionManager.TcpConnectionStarted += this.HandleTcpConnectionStarted;
+			this.connectionManager.BgpOpenReceived += this.HandleBgpOpenReceived;
+			this.connectionManager.BgpUpdateReceived += this.HandleBgpUpdateReceived;
+			this.connectionManager.BgpNotificationReceived += this.HandleBgpNotificationReceived;
+			this.connectionManager.BgpKeepAliveReceived += this.HandleBgpKeepAliveReceived;
+			this.connectionManager.StartTcpListener(this.port);
+			this.connectionManager.DiscoverNeighbors();
+		}
 
-            //this.connectionManager.Broadcast(new BgpOpenMessage(1, 69, IPAddress.Loopback));
-            //this.ChangeState(BgpState.Idle);
-            //TODO: broadcast keep alive every 30 secs
-        }
+		private void HandleBgpKeepAliveReceived(object sender, BgpMessageReceivedEventArgs<BgpKeepAliveMessage> e) {
+			Logger.Info($"KEEPALIVE received from '{e.SenderId}'");
+		}
 
-        private void HandleBgpKeepAliveReceived(object sender, BgpMessageReceivedEventArgs<BgpKeepAliveMessage> e)
-        {
-            Logger.Info($"KEEPALIVE received from '{e.SenderId}'");
-        }
+		private void HandleBgpNotificationReceived(object sender, BgpMessageReceivedEventArgs<BgpNotificationMessage> e) {
+			Logger.Info($"NOTIFICATION received from '{e.SenderId}'");
+		}
 
-        private void HandleBgpNotificationReceived(object sender, BgpMessageReceivedEventArgs<BgpNotificationMessage> e)
-        {
-            Logger.Info($"NOTIFICATION received from '{e.SenderId}'");
+		private void HandleBgpOpenReceived(object sender, BgpMessageReceivedEventArgs<BgpOpenMessage> e) {
+			Logger.Info($"OPEN received from '{e.SenderId}'");
+			this.connectionManager.SetConnectionHoldTime(e.BgpMessage.HoldTime, e.SenderId);
+			this.connectionManager.StartKeepAliveInterval(e.SenderId);
+		}
 
-        }
+		private void HandleBgpUpdateReceived(object sender, BgpMessageReceivedEventArgs<BgpUpdateMessage> e) {
+			Logger.Info($"UPDATE received from '{e.SenderId}'");
+		}
 
-        private void HandleBgpUpdateReceived(object sender, BgpMessageReceivedEventArgs<BgpUpdateMessage> e)
-        {
-            Logger.Info($"UPDATE received from '{e.SenderId}'");
-        }
-
-        private void HandleBgpOpenReceived(object sender, BgpMessageReceivedEventArgs<BgpOpenMessage> e)
-        {
-            Logger.Info($"OPEN received from '{e.SenderId}'");
-        }
-
-        private void HandleConnectionReceived(object sender, ConnectionReceivedEventArgs e) {
-			Logger.Info($"Connection received: {e.Data}");
-            var message = BgpMessageSerializer.Deserialize(e.Data);
-            //if (this.state == BgpState.Connect)
-            //{
-            //    //this.SendOpenMessage( /* TODO: the peer is the receiver of this message */);
-            //    this.ChangeState(BgpState.OpenSent);
-            //}
-        }
-
-        private void ChangeState(BgpState toState)
-        {
-            var fromState = this.state;
-            switch (this.state)
-            {
-                case BgpState.Idle:
-                {
-                    //this.connectionManager.InitiatePeerConnections();
-                    this.ChangeState(BgpState.Connect);
-                    return;
-                }
-                case BgpState.Active:
-                {
-                    return;
-                }
-                case BgpState.Connect:
-                {
-                    // Do nothing here, send open message when peer tcp connection is negotiated
-                    // in HandleConnectionReceived
-                    return;
-                }
-                case BgpState.Established:
-                {
-                    return;
-                }
-                case BgpState.OpenSent:
-                {
-                    return;
-                }
-                case BgpState.OpenConfirm:
-                {
-                    return;
-                }
-                default:
-                {
-                    throw new ArgumentException($"Unknown BgpState '{state}'");
-                }
-            }
-        }
+		private void HandleTcpConnectionStarted(object sender, TcpConnectionReceivedEventArgs e) {
+			Logger.Info($"TCP connection formed with '{e.ClientId}'. Replying with OPEN message.");
+			// After the TCP connection is formed, both parties send the other one an OPEN message.
+			// Here we, the receiver, send the sender an OPEN message.
+			var openMessage = new BgpOpenMessage((ushort) this.asNumber, (ushort) this.holdTime, this.bgpIdentifier);
+			this.connectionManager.SendMessage(openMessage, e.ClientId);
+		}
 	}
 }

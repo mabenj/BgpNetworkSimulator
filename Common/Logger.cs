@@ -8,23 +8,21 @@
 
 		public static void Error(string message, Exception e = null) {
 			Console.WriteLine($"{GetTimeStamp()} [ERROR] {message}");
-            if (e != null)
-            {
-                Console.WriteLine($"{GetTimeStamp()} [ERROR] Stacktrace: {e.StackTrace}");
-            }
-        }
+			if(e != null) {
+				Console.WriteLine($"{GetTimeStamp()} [ERROR] Stacktrace: {e.StackTrace}");
+			}
+		}
 
 		public static void Info(string message) {
-            Console.WriteLine($"{GetTimeStamp()} [INFO] {message}");
-        }
+			Console.WriteLine($"{GetTimeStamp()} [INFO] {message}");
+		}
 
-        public static void Warning(string message) {
-            Console.WriteLine($"{GetTimeStamp()} [WARN] {message}");
-        }
+		public static void Warning(string message) {
+			Console.WriteLine($"{GetTimeStamp()} [WARN] {message}");
+		}
 
-        private static string GetTimeStamp()
-        {
-            return DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
-        }
-    }
+		private static string GetTimeStamp() {
+			return DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+		}
+	}
 }

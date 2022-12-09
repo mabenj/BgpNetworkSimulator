@@ -24,17 +24,19 @@
 				Debugger.Launch();
 				args = args.Where(arg => arg != "--debug").ToArray();
 			}
-			if(args.Length < 2) {
-				throw new ArgumentException("Invalid arguments. Please provide following the arguments: <router id> <port>.");
+			if(args.Length < 3) {
+				throw new ArgumentException("Invalid arguments. Please provide following the arguments: <router id> <port> <AS number> <hold time (optional)>.");
 			}
 			return new RouterConfiguration() {
 				Id = args[0],
 				Port = int.Parse(args[1]),
+				AsNumber = int.Parse(args[2]),
+				HoldTime = int.TryParse(args[3], out var holdTimeResult) ? holdTimeResult : null
 			};
 		}
 
 		private static void Run(RouterConfiguration config) {
-			var router = new Router(config.Id, config.Port);
+			var router = new Router(config.Id, config.Port, config.AsNumber, config.HoldTime ?? BgpConnection.MinHoldTimeSeconds);
 			Logger.Info($"Starting router [id:{config.Id}] [port:{config.Port}]");
 			router.Start();
 		}

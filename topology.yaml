@@ -1,18 +1,22 @@
 version: 1.0
 nodes: 
   - id: 1
-    ip: 127.0.0.1
+    as: 1
+    mock_ip: 192.168.12.1
     port: 7001
     neighbors: [2, 3, 4]
   - id: 2
-    ip: 127.0.0.1
+    as: 2
+    mock_ip: 192.168.12.2
     port: 7002
     neighbors: [1]
   - id: 3
-    ip: 127.0.0.1
+    as: 3
+    mock_ip: 192.168.12.3
     port: 7003
     neighbors: [1, 4]
   - id: 4
-    ip: 127.0.0.1
+    as: 4
+    mock_ip: 192.168.12.4
     port: 7004
     neighbors: [1, 3]
